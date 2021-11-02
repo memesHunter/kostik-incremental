@@ -1,0 +1,182 @@
+<HTML>
+    <head>
+        <title>INC GAEM</title>
+        <style>
+            
+        </style>
+    </head>
+    
+    <body>
+        <p>koksticks: <span id="score">(loading)</span></p>
+        <p>koksticks per second: <span id="kps_label">0</span></p>
+        <p><button onclick="clickingStuff.click()">get kokstick</button></p>
+        <div class="buildings_bought" id="buildings_bought_id">
+            <span id="buildings_bought_head">BUILDINGS</span>
+            <br>
+            
+        </div>
+        <div class="buttons_menu" align="right" id="buttons_menu_id">
+            Loading...
+        </div>
+        <div class="logs">
+            <button onclick="log('test')">test log</button>
+            <button onclick="clearLog()">CLEAR LOG</button>
+            <br>
+            <input type="range" min="5" max="10" step="1" id="log_slider"><br>
+            <span id="log_head">LOG (0/0):</span>
+            <br>
+            <span id="log_trace">Loading...</span>
+        </div>
+
+        <script>
+        var balance = 1000
+        var kps = 0
+        
+        var log_lines = 0
+        var max_log_lines = 5
+        
+        function drawById(id, content) {
+            document.getElementById(id).innerHTML = content
+        }
+        
+        document.getElementById("log_slider").oninput = function() {
+            max_log_lines = this.value
+            drawById("log_head", "LOG (" + log_lines + "/" + max_log_lines + "):")
+        }
+        
+        function updateBalance(amount) {
+            balance += amount
+            drawById("score", balance.toFixed(2))
+        }
+          
+        function log(message) {
+            if (log_lines >= max_log_lines) {
+                clearLog()
+            }
+            log_lines++
+            document.getElementById("log_trace").innerHTML += message + "<br>"
+            drawById("log_head", "LOG (" + log_lines + "/" + max_log_lines + "):")
+        }
+        
+        function clearLog() {
+            log_lines = 0
+            drawById("log_trace", "")
+            drawById("log_head", "LOG (" + log_lines + "/" + max_log_lines + "):")
+        }
+        
+        function makeBuilding(price, stat, name) {
+            return {
+                name: name,
+                visible: false,
+                
+                basePrice: price,
+                curPrice: price,
+                priceMultipiler: 1.15,
+                
+                stat: stat,
+                multipiler: 1,
+                
+                amount: 0,
+                
+                addMultipiler: function(mult) {
+                    this.multipiler *= mult
+                },
+                
+                applyPriceMultipiler: function() {
+                    this.curPrice *= this.priceMultipiler
+                    this.curPrice = this.curPrice.toFixed(2)
+                },
+                
+                getStat: function() {
+                    return this.stat * this.multipiler * this.amount
+                }
+            }
+        }
+        
+        const buildingsMap = {
+            tier1: makeBuilding(10, 0.1, "TIER1_BUILD"),
+            tier2: makeBuilding(100, 1, "TIER2_BUILD"),
+            tier3: makeBuilding(500, 5, "TIER3_BUILD")
+        }
+        
+        const clickingStuff = {
+            totalClicks: 0,
+            luckyClickNum: 7,
+            
+            multipiler: 1,
+            
+            click: function() {
+                this.totalClicks++
+                if (this.totalClicks == this.luckyClickNum) {
+                    this.luckyClick()
+                    this.luckyClickNum *= 7
+                } else {
+                    updateBalance(this.multipiler)
+                }
+            },
+            
+            luckyClick: function() {
+                log("lucky you!")
+                updateBalance(this.multipiler * this.luckyClickNum)
+            }
+        }
+        
+        function drawBuildingsBought() {
+            const target_field = document.getElementById("buildings_bought_id")
+            
+            target_field.innerHTML = '<span id="buildings_bought_head">BUILDINGS</span><br>╔════════════════<br>'
+            for (let [name, building] of Object.entries(buildingsMap)) {
+                if (building.visible) {
+                    target_field.innerHTML += `║ Name: ${building.name}<br>║ KPS: ${building.getStat().toFixed(2)}<br>║ Amount: ${building.amount}<br>╠════════════════<br>`
+                } else {
+                    console.log(`<${building.name}> visibility: <${building.visible}>`)
+                }
+            }
+        }
+        
+        function buyBuilding(name) {
+            const building = buildingsMap[name]
+            
+            if (building.curPrice > balance) {
+                log(`Not enough koksticks. Need ${(building.curPrice - balance).toFixed(2)} more`)
+            } else {
+                log(`Buying ${name}`)
+                updateBalance(-building.curPrice)
+                
+                building.visible = true
+                building.amount++
+                building.applyPriceMultipiler()
+                kps += building.stat * building.multipiler
+                
+            }
+            drawBuildingsBought()
+            drawById("kps_label", kps.toFixed(2))
+            drawById(building.name, building.curPrice) 
+        }
+        
+        function initButtons() {
+            for (let [name, building] of Object.entries(buildingsMap)) {
+                if (name == "tier1") {
+                    drawById("buttons_menu_id", '<button onclick=buyBuilding("tier1")>buy tier1 [<span id="TIER1_BUILD">10</span>]</button>')
+                    continue
+                }
+                document.getElementById("buttons_menu_id").innerHTML += ('<button onclick=buyBuilding(\"' + name + '\")>buy ' + name + ' [<span id=' + building.name + '>' + building.curPrice + '</span>]</button>')
+            }
+        }
+        
+        function mainLoop() {
+            
+            
+            updateBalance(kps)
+        }
+        
+        function init() {
+            initButtons()
+            log("Started")
+            setInterval(mainLoop, 1000)
+        }
+        
+        init()
+        </script>
+    </body>
+</HTML>
